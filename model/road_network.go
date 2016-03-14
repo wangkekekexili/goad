@@ -2,6 +2,7 @@ package model
 
 import (
 	"bufio"
+	"container/heap"
 	"errors"
 	"os"
 	"strconv"
@@ -52,9 +53,10 @@ func CreateRoadNetworkFromFiles(nodeFileName, edgeFileName string) (*RoadNetwork
 			return nil, err
 		}
 		newNode := &node{
-			id: id,
-			x:  x,
-			y:  y,
+			id:    id,
+			x:     x,
+			y:     y,
+			edges: make(map[int]*edge),
 		}
 		roadNetwork.nodes[id] = newNode
 	}
@@ -86,6 +88,8 @@ func CreateRoadNetworkFromFiles(nodeFileName, edgeFileName string) (*RoadNetwork
 			length:  length,
 		}
 		roadNetwork.edges[id] = newEdge
+		roadNetwork.nodes[node1Id].edges[id] = newEdge
+		roadNetwork.nodes[node2Id].edges[id] = newEdge
 	}
 
 	return roadNetwork, nil
@@ -98,9 +102,76 @@ func (roadNetwork *RoadNetwork) NumberOfNodes() int {
 	return len(roadNetwork.nodes)
 }
 
-func (RoadNetwork *RoadNetwork) NumberOfEdges() int {
-	if RoadNetwork == nil {
+func (roadNetwork *RoadNetwork) NumberOfEdges() int {
+	if roadNetwork == nil {
 		return 0
 	}
-	return len(RoadNetwork.edges)
+	return len(roadNetwork.edges)
+}
+
+// nodeHeap is used for Dijkstra algorithm.
+type nodeHeap []*node
+
+func (h nodeHeap) Len() int           { return len(h) }
+func (h nodeHeap) Less(i, j int) bool { return h[i].current < h[j].current }
+func (h nodeHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *nodeHeap) Push(x interface{}) {
+	// Push and Pop use pointer receivers because they modify the slice's length,
+	// not just its contents.
+	*h = append(*h, x.(*node))
+}
+func (h *nodeHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+// Distance returns the min distance between the nodes with ID startId and destinationId.
+// It returns -1 if ids don't exist or there is no path between the two nodes.
+func (roadNetwork *RoadNetwork) Distance(startId, destinationId int) float64 {
+	if roadNetwork == nil || roadNetwork.nodes[startId] == nil || roadNetwork.nodes[destinationId] == nil {
+		return -1
+	}
+	roadNetwork.initDijkstra()
+	startNode := roadNetwork.nodes[startId]
+	startNode.shortest = 0
+	startNode.inHeap = true
+	nodeHeap := &nodeHeap{startNode}
+	heap.Init(nodeHeap)
+
+	for nodeHeap.Len() != 0 {
+		currentNode := heap.Pop(nodeHeap).(*node)
+		currentNode.shortest = currentNode.current
+		currentNode.inHeap = false
+		if currentNode.id == destinationId {
+			return currentNode.shortest
+		}
+		for _, edge := range currentNode.edges {
+			nextNodeId := edge.otherEndNodeId(currentNode.id)
+			nextNode := roadNetwork.nodes[nextNodeId]
+			if nextNode.shortest != -1 {
+				continue
+			}
+			if nextNode.inHeap {
+				if currentNode.shortest+edge.length < nextNode.current {
+					nextNode.current = currentNode.shortest + edge.length
+				}
+			} else {
+				nextNode.current = currentNode.shortest + edge.length
+				nextNode.inHeap = true
+				heap.Push(nodeHeap, nextNode)
+			}
+		}
+	}
+	return -1
+}
+
+func (roadNetwork *RoadNetwork) initDijkstra() {
+	for _, node := range roadNetwork.nodes {
+		node.shortest = -1
+		node.current = 0
+		node.inHeap = false
+	}
 }
