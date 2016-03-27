@@ -7,7 +7,15 @@ type node struct {
 	edges map[int]*edge
 
 	// For Dijkstra algorithm.
-	current  float64
-	shortest float64
-	inHeap   bool
+	distance   float64
+	nodeStatus nodeStatus
 }
+
+// For Dijkstra algorithm
+type nodeStatus int32
+
+const (
+	unvisited nodeStatus = iota
+	reached   nodeStatus = iota
+	finished  nodeStatus = iota
+)

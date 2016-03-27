@@ -113,7 +113,7 @@ func (roadNetwork *RoadNetwork) NumberOfEdges() int {
 type nodeHeap []*node
 
 func (h nodeHeap) Len() int           { return len(h) }
-func (h nodeHeap) Less(i, j int) bool { return h[i].current < h[j].current }
+func (h nodeHeap) Less(i, j int) bool { return h[i].distance < h[j].distance }
 func (h nodeHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 func (h *nodeHeap) Push(x interface{}) {
 	// Push and Pop use pointer receivers because they modify the slice's length,
@@ -136,31 +136,29 @@ func (roadNetwork *RoadNetwork) Distance(startId, destinationId int) float64 {
 	}
 	roadNetwork.initDijkstra()
 	startNode := roadNetwork.nodes[startId]
-	startNode.shortest = 0
-	startNode.inHeap = true
+	startNode.distance = 0
+	startNode.nodeStatus = reached
 	nodeHeap := &nodeHeap{startNode}
 	heap.Init(nodeHeap)
 
 	for nodeHeap.Len() != 0 {
 		currentNode := heap.Pop(nodeHeap).(*node)
-		currentNode.shortest = currentNode.current
-		currentNode.inHeap = false
+		currentNode.nodeStatus = finished
 		if currentNode.id == destinationId {
-			return currentNode.shortest
+			return currentNode.distance
 		}
 		for _, edge := range currentNode.edges {
 			nextNodeId := edge.otherEndNodeId(currentNode.id)
 			nextNode := roadNetwork.nodes[nextNodeId]
-			if nextNode.shortest != -1 {
+			if nextNode.nodeStatus == finished {
 				continue
-			}
-			if nextNode.inHeap {
-				if currentNode.shortest+edge.length < nextNode.current {
-					nextNode.current = currentNode.shortest + edge.length
+			} else if nextNode.nodeStatus == reached {
+				if currentNode.distance+edge.length < nextNode.distance {
+					nextNode.distance = currentNode.distance + edge.length
 				}
 			} else {
-				nextNode.current = currentNode.shortest + edge.length
-				nextNode.inHeap = true
+				nextNode.distance = currentNode.distance + edge.length
+				nextNode.nodeStatus = reached
 				heap.Push(nodeHeap, nextNode)
 			}
 		}
@@ -170,8 +168,7 @@ func (roadNetwork *RoadNetwork) Distance(startId, destinationId int) float64 {
 
 func (roadNetwork *RoadNetwork) initDijkstra() {
 	for _, node := range roadNetwork.nodes {
-		node.shortest = -1
-		node.current = 0
-		node.inHeap = false
+		node.distance = 0
+		node.nodeStatus = unvisited
 	}
 }
