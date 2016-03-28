@@ -7,8 +7,9 @@ type node struct {
 	edges map[int]*edge
 
 	// For Dijkstra algorithm.
-	distance   float64
-	nodeStatus nodeStatus
+	distance    float64
+	indexInHeap int
+	nodeStatus  nodeStatus
 }
 
 // For Dijkstra algorithm

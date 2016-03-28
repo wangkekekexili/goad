@@ -114,11 +114,16 @@ type nodeHeap []*node
 
 func (h nodeHeap) Len() int           { return len(h) }
 func (h nodeHeap) Less(i, j int) bool { return h[i].distance < h[j].distance }
-func (h nodeHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h nodeHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+	h[i].indexInHeap, h[j].indexInHeap = h[j].indexInHeap, h[i].indexInHeap
+}
 func (h *nodeHeap) Push(x interface{}) {
 	// Push and Pop use pointer receivers because they modify the slice's length,
 	// not just its contents.
-	*h = append(*h, x.(*node))
+	node := x.(*node)
+	node.indexInHeap = len(*h)
+	*h = append(*h, node)
 }
 func (h *nodeHeap) Pop() interface{} {
 	old := *h
@@ -169,6 +174,7 @@ func (roadNetwork *RoadNetwork) Distance(startId, destinationId int) float64 {
 func (roadNetwork *RoadNetwork) initDijkstra() {
 	for _, node := range roadNetwork.nodes {
 		node.distance = 0
+		node.indexInHeap = -1
 		node.nodeStatus = unvisited
 	}
 }
